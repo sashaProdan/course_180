@@ -1,0 +1,54 @@
+#! /usr/bin/env ruby
+
+require "pg"
+
+@connection = PG.connect(dbname: "expenses")
+
+def print_help
+  puts <<-HELP
+
+  An expense recording system
+
+  Commands:
+
+  add AMOUNT MEMO[DATE] - record a new expense
+  clear - delete all expenses
+  list - list all expenses
+  delete NUMBER - remove expense with id NUMBER
+  search QUERY - list expenses with a matching memo field
+
+  HELP
+end
+
+def list_expenses
+  result = @connection.exec("SELECT * FROM expenses ORDER BY created_on ASC")
+  result.each do |tuple|
+    columns = [tuple["id"].rjust(3),
+               tuple["created_on"].rjust(10),
+               tuple["amount"].rjust(12),
+               tuple["memo"]
+              ]
+    puts columns.join(" | ")
+  end
+end
+
+def add_expenses(amount, memo)
+  sql = ("INSERT INTO expenses (amount, memo, created_on ) VALUES ($1, $2, now())")
+  @connection.exec_params(sql, [amount, memo])
+end
+
+
+argument = ARGV.first
+
+
+if argument == "list"
+    list_expenses
+elsif argument == "add"
+  if ARGV.size == 3
+    add_expenses(ARGV[1], ARGV[2])
+  else
+    puts "You must provide an amount and memo."
+  end
+else
+    print_help
+end
