@@ -2,53 +2,65 @@
 
 require "pg"
 
-@connection = PG.connect(dbname: "expenses")
 
-def print_help
-  puts <<-HELP
+class ExpenseData
+  def initialize
+    @connection = PG.connect(dbname: "expenses")
+  end
 
-  An expense recording system
+  def list_expenses
+    result = @connection.exec("SELECT * FROM expenses ORDER BY created_on ASC")
+    result.each do |tuple|
+      columns = [tuple["id"].rjust(3),
+                 tuple["created_on"].rjust(10),
+                 tuple["amount"].rjust(12),
+                 tuple["memo"]
+                ]
+      puts columns.join(" | ")
+    end
+  end
 
-  Commands:
-
-  add AMOUNT MEMO[DATE] - record a new expense
-  clear - delete all expenses
-  list - list all expenses
-  delete NUMBER - remove expense with id NUMBER
-  search QUERY - list expenses with a matching memo field
-
-  HELP
-end
-
-def list_expenses
-  result = @connection.exec("SELECT * FROM expenses ORDER BY created_on ASC")
-  result.each do |tuple|
-    columns = [tuple["id"].rjust(3),
-               tuple["created_on"].rjust(10),
-               tuple["amount"].rjust(12),
-               tuple["memo"]
-              ]
-    puts columns.join(" | ")
+  def add_expenses(amount, memo)
+    sql = ("INSERT INTO expenses (amount, memo, created_on ) VALUES ($1, $2, now())")
+    @connection.exec_params(sql, [amount, memo])
   end
 end
 
-def add_expenses(amount, memo)
-  sql = ("INSERT INTO expenses (amount, memo, created_on ) VALUES ($1, $2, now())")
-  @connection.exec_params(sql, [amount, memo])
-end
-
-
-argument = ARGV.first
-
-
-if argument == "list"
-    list_expenses
-elsif argument == "add"
-  if ARGV.size == 3
-    add_expenses(ARGV[1], ARGV[2])
-  else
-    puts "You must provide an amount and memo."
+class CLI
+  def initialize(db_name)
+    @application = ExpenseData.new
   end
-else
-    print_help
+
+  def run(arguments)
+    command = arguments.shift
+    case command
+    when "add"
+      amount = arguments[0]
+      memo = arguments[1]
+      abort "You must provide an amount and memo." unless amount && memo
+      @application.add_expenses(amount, memo)
+    when "list"
+      @application.list_expenses
+    else
+      print_help
+    end
+  end
+
+  def print_help
+    puts <<-HELP
+
+    An expense recording system
+
+    Commands:
+
+    add AMOUNT MEMO[DATE] - record a new expense
+    clear - delete all expenses
+    list - list all expenses
+    delete NUMBER - remove expense with id NUMBER
+    search QUERY - list expenses with a matching memo field
+
+    HELP
+  end
 end
+
+CLI.new.run(ARGV)
