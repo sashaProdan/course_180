@@ -1,6 +1,7 @@
 #! /usr/bin/env ruby
 
 require "pg"
+require "io/console"
 
 
 class ExpenseData
@@ -39,16 +40,21 @@ class ExpenseData
     end
   end
 
+  def delete_all_expenses
+    @connection.exec("DELETE FROM expenses")
+    puts "All expenses have been deleted."
+  end
+
   private
 
   def display_expenses(expenses)
     expenses.each do |tuple|
-        columns = [tuple["id"].rjust(3),
-                   tuple["created_on"].rjust(10),
-                   tuple["amount"].rjust(12),
-                   tuple["memo"]
-                  ]
-        puts columns.join(" | ")
+      columns = [tuple["id"].rjust(3),
+                 tuple["created_on"].rjust(10),
+                 tuple["amount"].rjust(12),
+                 tuple["memo"]
+                ]
+      puts columns.join(" | ")
     end
   end
 end
@@ -72,6 +78,9 @@ class CLI
       @application.search_expenses(arguments[0])
     when "delete"
       @application.delete_expense(arguments[0])
+    when "clear"
+      puts "This will remove all expenses. Are you sure? (y/n)"
+      @application.delete_all_expenses if $stdin.getch == 'y'
     else
       print_help
     end
