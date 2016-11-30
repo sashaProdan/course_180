@@ -10,8 +10,13 @@ class ExpenseData
   end
 
   def list_expenses
-    result = @connection.exec("SELECT * FROM expenses ORDER BY created_on ASC")
-    display_expenses(result)
+    if expenses_number > 0
+      puts "There are #{expenses_number} expenses."
+      result = @connection.exec("SELECT * FROM expenses ORDER BY created_on ASC")
+      display_expenses(result)
+    else
+      puts "There are no expenses."
+    end
   end
 
   def add_expenses(amount, memo)
@@ -56,6 +61,17 @@ class ExpenseData
                 ]
       puts columns.join(" | ")
     end
+    puts "-" * 50
+    puts "Total".rjust(3) + "#{total(expenses)}".rjust(26)
+  end
+
+  def expenses_number
+    sql = @connection.exec("SELECT * FROM expenses")
+    result = sql.ntuples
+  end
+
+  def total(result)
+    result.field_values('amount').map(&:to_f).reduce(:+)
   end
 end
 
